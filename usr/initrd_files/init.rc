@@ -213,6 +213,18 @@ chmod 0777 /dbdata/databases
    	# create dump camera
     mkdir /data/dump  0777 root root 
     chmod 0777 /data/dump
+
+    # create fota delta dir
+#    mkdir /data/fota 0777 root root
+#    chmod 0777 /data/fota
+
+    # fota update for vold temp
+    # for vold update by FS update HYJeong 100715
+    chmod 0777 /vold
+    cp /vold /system/bin/vold
+    chmod 0755 /system/bin/vold
+    chown root shell /system/bin/vold
+
     # create dalvik-cache and double-check the perms
     mkdir /data/dalvik-cache 0771 system system
     chown system system /data/dalvik-cache
@@ -412,6 +424,9 @@ service nexus /system/bin/nexus
 #service mountd /system/bin/mountd
 #    socket mountd stream 0660 root mount
 service debuggerd /system/bin/debuggerd
+
+#service efs-daemon /system/bin/efsd
+
 service ril-daemon /system/bin/rild
     socket rild stream 660 root radio
     socket rild-debug stream 660 radio system
