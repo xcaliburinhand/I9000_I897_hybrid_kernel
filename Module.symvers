@@ -1241,6 +1241,7 @@
 0x00000000	ktime_get_real	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	panic_notifier_list	vmlinux	EXPORT_SYMBOL
 0x00000000	__xfrm_state_delete	vmlinux	EXPORT_SYMBOL
+0x00000000	is_mmc_resume	vmlinux	EXPORT_SYMBOL
 0x00000000	regulator_has_full_constraints	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	gpio_export	vmlinux	EXPORT_SYMBOL_GPL
 0x00000000	d_delete	vmlinux	EXPORT_SYMBOL

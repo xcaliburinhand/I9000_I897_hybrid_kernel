@@ -120,7 +120,6 @@ CONFIG_LBD=y
 # CONFIG_BLK_DEV_IO_TRACE is not set
 # CONFIG_BLK_DEV_BSG is not set
 # CONFIG_BLK_DEV_INTEGRITY is not set
-CONFIG_INITRAMFS_SOURCE="usr/initrd_files usr/initrd_list"
 
 #
 # IO Schedulers

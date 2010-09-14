@@ -251,7 +251,28 @@ chmod 0777 /dbdata/databases
     mkdir /data/data/.drm/.wmdrm 0777
     #mkdir /data/data/.drm/.divxdrm 0777
 	mkdir /efs/.android 0777
-    
+  
+#permission for playready certificates
+
+        chmod 0777 /system/etc/security/drm/zprivsig.dat
+        chmod 0777 /system/etc/security/drm/zprivencr.dat
+        chmod 0777 /system/etc/security/drm/zgpriv.dat
+        chmod 0777 /system/etc/security/drm/unsignedtemplate.dat
+        chmod 0777 /system/etc/security/drm/ndrgpriv.dat
+        chmod 0777 /system/etc/security/drm/ndrpriv.dat
+        chmod 0777 /system/etc/security/drm/ndrcerttemplate.dat
+        chmod 0777 /system/etc/security/drm/devcerttemplate.dat
+        chmod 0777 /system/etc/security/drm/bgroupcert.dat
+        chmod 0777 /system/etc/security/drm/bDomainCertSecL0.dat
+        chmod 0777 /system/etc/security/drm/priv.dat
+
+        chmod 0777 /system/etc/security/drm/playready.hds
+     chmod 0777 /system/etc/security/drm/devcert.dat
+     chmod 0777 /system/etc/security/drm/bdevcert.dat
+
+     #20100319 Branden, to active WMDRM. End
+
+ 
     # Permission for WMDRM sample.hds file
     chmod 0777  /data/data/.drm/.wmdrm/sample.hds
 
@@ -425,7 +446,7 @@ service nexus /system/bin/nexus
 #    socket mountd stream 0660 root mount
 service debuggerd /system/bin/debuggerd
 
-#service efs-daemon /system/bin/efsd
+service efs-daemon /system/bin/efsd
 
 service ril-daemon /system/bin/rild
     socket rild stream 660 root radio
