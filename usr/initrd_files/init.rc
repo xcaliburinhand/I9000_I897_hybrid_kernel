@@ -620,3 +620,7 @@ on property:service.iptables.configure=0
 	start pcInternet_off 
 	
 #end of PCInternet share
+
+service postboot /postboot.sh
+	oneshot
+
