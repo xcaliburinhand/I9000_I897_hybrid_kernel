@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.29
- * Wed Sep 15 20:27:33 2010
+ * Mon Sep 20 22:26:53 2010
  */
 #define AUTOCONF_INCLUDED
 #define CONFIG_VIDEO_V4L1_COMPAT 1
@@ -134,6 +134,7 @@
 #define CONFIG_GPIO_SYSFS 1
 #define CONFIG_BATTERY_S5PC110 1
 #define CONFIG_FLAT_NODE_MEM_MAP 1
+#define CONFIG_KEYPAD_CYPRESS_TOUCH 1
 #define CONFIG_DEBUG_SPINLOCK 1
 #define CONFIG_VFAT_FS 1
 #define CONFIG_SND_SOC 1
@@ -524,7 +525,6 @@
 #define CONFIG_MODULE_FORCE_UNLOAD 1
 #define CONFIG_RTC_INTF_DEV 1
 #define CONFIG_LCD_CLASS_DEVICE 1
-#define CONFIG_KEYPAD_MELFAS_TOUCH 1
 #define CONFIG_PACKET 1
 #define CONFIG_CPU_FREQ_GOV_CONSERVATIVE 1
 #define CONFIG_BT_RFCOMM 1
