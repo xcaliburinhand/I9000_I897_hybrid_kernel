@@ -2,6 +2,7 @@
  * Driver for keys on GPIO lines capable of generating interrupts.
  *
  * Copyright 2005 Phil Blundell
+ *           2010 Michael Richter (alias neldar)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -52,8 +53,11 @@ Melfas touchkey register
 #define IRQ_TOUCH_INT S3C_GPIOINT(J4,1)
 #define DEVICE_NAME "melfas-touchkey"
 
+#define BACKLIGHT_ON 1
+#define BACKLIGHT_OFF 2
+
 static int touchkey_keycode[5] = {NULL, KEY_BACK, KEY_MENU, KEY_ENTER, KEY_END};
-static struct input_dev *touchkey_dev;
+//static struct input_dev *touchkey_dev;
 static int touchkey_enable = 0;
 
 struct i2c_touchkey_driver {
@@ -87,6 +91,7 @@ static int i2c_touchkey_detach_client(struct i2c_client *client);
 static void init_hw(void);
 extern int get_touchkey_firmware(char * version);
 static int touchkey_led_status = 0;
+static int touchkey_power_status = 0;
 
 struct i2c_driver touchkey_i2c_driver =
 {
@@ -105,6 +110,29 @@ static void set_touchkey_debug(char value)
     if(touchkey_debug_count == 100) touchkey_debug_count =0;
     touchkey_debug[touchkey_debug_count] = value;
     touchkey_debug_count++;
+}
+
+static void touchkey_power_on_only_vdd(void){
+    gpio_direction_output(_3_GPIO_TOUCH_EN, 1);
+    touchkey_power_status = 1;
+}
+
+static void touchkey_power_on(void){
+    touchkey_power_on_only_vdd();
+    gpio_direction_output(_3_GPIO_TOUCH_CE, 1);
+}
+
+static void touchkey_power_off(void){
+    touchkey_power_status = 0;
+    gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
+    gpio_direction_output(_3_GPIO_TOUCH_CE, 0);
+}
+
+static void touchkey_power_off_with_i2c(void){
+    touchkey_power_off();
+    gpio_direction_output(_3_TOUCH_SDA_28V, 0);
+    gpio_direction_output(_3_TOUCH_SCL_28V, 0);
+    
 }
 
 static int i2c_touchkey_read(u8 reg, u8 *val, unsigned int len)
@@ -138,12 +166,16 @@ static int i2c_touchkey_read(u8 reg, u8 *val, unsigned int len)
 
 static int i2c_touchkey_write(u8 *val, unsigned int len)
 {
+  /*
+  *  removed touchkey_enable==1 check.
+  */
+  
 	int err;
 	struct i2c_msg msg[1];
 	unsigned char data[2];
        int     retry = 2;
 
-	if((touchkey_driver == NULL) || !(touchkey_enable==1))
+	if(touchkey_driver == NULL)
        {
               printk(KERN_DEBUG "touchkey is not enabled.W\n");
 		return -ENODEV;
@@ -189,7 +221,8 @@ void  touchkey_work_func(struct work_struct * p)
             input_report_key(touchkey_driver->input_dev,  touchkey_keycode[2], 0);
             retry = 10;
             while(retry--)
-            {
+            {	
+		touchkey_power_status = 0;
                 gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
                 mdelay(300);
                 init_hw();
@@ -205,10 +238,7 @@ void  touchkey_work_func(struct work_struct * p)
             //touchkey die , do not enable touchkey
             //enable_irq(IRQ_TOUCH_INT);
             touchkey_enable = -1;
-            gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
-            gpio_direction_output(_3_GPIO_TOUCH_CE, 0);
-            gpio_direction_output(_3_TOUCH_SDA_28V, 0);
-            gpio_direction_output(_3_TOUCH_SCL_28V, 0);
+	    touchkey_power_off_with_i2c();
             printk("%s touchkey died\n", __func__);
             set_touchkey_debug('D');
             return; 
@@ -281,7 +311,7 @@ static irqreturn_t touchkey_interrupt(int irq, void *dummy)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void melfas_touchkey_early_suspend(struct early_suspend *h)
 {
-		touchkey_enable = 0;
+    touchkey_enable = 0;
     set_touchkey_debug('S');
     printk(KERN_DEBUG "melfas_touchkey_early_suspend\n");
     if(touchkey_enable < 0)
@@ -291,15 +321,12 @@ static void melfas_touchkey_early_suspend(struct early_suspend *h)
     }
 
     disable_irq(IRQ_TOUCH_INT);
-    gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
-    gpio_direction_output(_3_GPIO_TOUCH_CE, 0);
-    gpio_direction_output(_3_TOUCH_SDA_28V, 0);
-    gpio_direction_output(_3_TOUCH_SCL_28V, 0);
+    touchkey_power_off_with_i2c();
 }
 
 static void melfas_touchkey_early_resume(struct early_suspend *h)
 {
-    unsigned char data;
+    //unsigned char data;
     set_touchkey_debug('R');
     printk(KERN_DEBUG "melfas_touchkey_early_resume\n");
     if(touchkey_enable < 0)
@@ -307,9 +334,8 @@ static void melfas_touchkey_early_resume(struct early_suspend *h)
         printk("---%s---touchkey_enable: %d\n",__FUNCTION__, touchkey_enable);
         return;
     }
-    gpio_direction_output(_3_GPIO_TOUCH_EN, 1);
-    gpio_direction_output(_3_GPIO_TOUCH_CE, 1);
     
+    touchkey_power_on();
     msleep(50);
 
     //clear interrupt
@@ -433,8 +459,7 @@ static int i2c_touchkey_detach_client(struct i2c_client *client)
 }
 static void init_hw(void)
 {
-	gpio_direction_output(_3_GPIO_TOUCH_EN, 1);
-	gpio_direction_output(_3_GPIO_TOUCH_CE, 1);
+	touchkey_power_on();
 	msleep(200);
 	s3c_gpio_setpull(_3_GPIO_TOUCH_INT, S3C_GPIO_PULL_NONE); 
 	set_irq_type(IRQ_TOUCH_INT, IRQ_TYPE_LEVEL_LOW);
@@ -587,18 +612,31 @@ static ssize_t touch_update_read(struct device *dev, struct device_attribute *at
 	return count;
 }
 
+static void set_backlight(u8 backlight_status){
+    if (touchkey_power_status == 1){
+	touchkey_led_status = backlight_status;
+	i2c_touchkey_write(&backlight_status, 1);
+    }
+}
+
 static ssize_t touch_led_control(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-	unsigned char data;
-	if(sscanf(buf, "%d\n", &data) == 1) {
-              printk(KERN_DEBUG "touch_led_control: %d \n", data);
-		i2c_touchkey_write(&data, 1);
-              touchkey_led_status = data;
+    unsigned char data;
+    if(sscanf(buf, "%d\n", &data) == 1) {
+	printk(KERN_DEBUG "touch_led_control: %d \n", data);
+	if ((touchkey_enable == 1)) {
+	    if (data == 1)
+		set_backlight(BACKLIGHT_ON);
+	    if (data == 2)
+		set_backlight(BACKLIGHT_OFF);
 	}
 	else
-		printk("touch_led_control Error\n");
-
-        return size;
+	    printk(KERN_DEBUG "touchkey is not enabled.W\n");
+    }
+    else
+	printk("touch_led_control Error\n");
+    
+    return size;
 }
 
 static ssize_t touchkey_enable_disable(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -609,8 +647,7 @@ static ssize_t touchkey_enable_disable(struct device *dev, struct device_attribu
     {
         set_touchkey_debug('d');
         disable_irq(IRQ_TOUCH_INT);
-        gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
-        gpio_direction_output(_3_GPIO_TOUCH_CE, 0);
+	touchkey_power_off();
         touchkey_enable = -2;
     }
     else if(*buf == '1')
@@ -618,8 +655,7 @@ static ssize_t touchkey_enable_disable(struct device *dev, struct device_attribu
         if(touchkey_enable == -2)
         {
             set_touchkey_debug('e');
-            gpio_direction_output(_3_GPIO_TOUCH_EN, 1);
-            gpio_direction_output(_3_GPIO_TOUCH_CE, 1);
+	    touchkey_power_on();
             touchkey_enable = 1;
             enable_irq(IRQ_TOUCH_INT);
         }
@@ -632,10 +668,64 @@ static ssize_t touchkey_enable_disable(struct device *dev, struct device_attribu
         return size;
 }
 
+static ssize_t notification_led_control(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    unsigned int data;
+    
+    if(sscanf(buf, "%u\n", &data) == 1) {
+	if(data == 1 || data == 2){
+	    printk(KERN_DEBUG "notification_led_control: %u \n", data);
+	    if (data == 1) {
+		if (touchkey_enable != 1){
+		    touchkey_power_on_only_vdd();		    
+		    mdelay(100);
+		    
+		    /* enable touchkey vdd in sleep mode */
+		    s3c_gpio_slp_cfgpin(_3_GPIO_TOUCH_EN, S3C_GPIO_SLP_OUT1);
+		    s3c_gpio_slp_setpull_updown(_3_GPIO_TOUCH_EN, S3C_GPIO_PULL_DOWN);
+
+		    /* write to i2cbus, enable backlights */
+		    set_backlight(BACKLIGHT_ON);
+		}
+		else
+		    printk(KERN_DEBUG "notification_led_control: cannot set led, touchkeys are enabled\n");
+	    }
+	    
+	    if(data == 2) {
+		printk(KERN_DEBUG "notification_led_control: notification led disabled\n");
+
+		/* disable touchkey vdd in sleep mode */
+		s3c_gpio_slp_cfgpin(_3_GPIO_TOUCH_EN, S3C_GPIO_SLP_OUT0);
+		s3c_gpio_slp_setpull_updown(_3_GPIO_TOUCH_EN, S3C_GPIO_PULL_NONE);
+
+		
+		if (touchkey_enable != 1){
+		    /* write to i2cbus, disable backlights */
+		    set_backlight(BACKLIGHT_OFF);
+		    
+		    /*
+		    mdelay(100);
+		    
+		    printk(KERN_DEBUG "notification_led_control: touchkey_controller powered off\n");
+		    touchkey_power_off_with_i2c();
+		    */
+		}
+	    }
+	}
+	else
+	    printk(KERN_DEBUG "notification_led_control: wrong input %u\n", data);
+    }
+    else
+	printk("notification_led_control: input error\n");
+    
+    return size;
+}
+
 static DEVICE_ATTR(touch_version, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, touch_version_read, touch_version_write);
 static DEVICE_ATTR(touch_update, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, touch_update_read, touch_update_write);
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, NULL, touch_led_control);
 static DEVICE_ATTR(enable_disable, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, NULL, touchkey_enable_disable);
+static DEVICE_ATTR(notification_led_control, S_IRUGO | S_IWUSR | S_IWOTH | S_IXOTH, NULL, notification_led_control);
 
 extern unsigned int HWREV;
 static int __init touchkey_init(void)
@@ -677,6 +767,11 @@ static int __init touchkey_init(void)
 		printk("%s device_create_file fail dev_attr_touch_update\n",__FUNCTION__);
 		pr_err("Failed to create device file(%s)!\n", dev_attr_enable_disable.attr.name);
 	}
+	if (device_create_file(touchkey_update_device.this_device, &dev_attr_notification_led_control) < 0)
+	{
+		printk("%s device_create_file fail dev_attr_touch_update\n",__FUNCTION__);
+		pr_err("Failed to create device file(%s)!\n", dev_attr_notification_led_control.attr.name);
+	}
 
        touchkey_wq = create_singlethread_workqueue("melfas_touchkey_wq");
 	if (!touchkey_wq)
@@ -712,11 +807,10 @@ static int __init touchkey_init(void)
                      set_touchkey_debug('f');
 		}
               if(retry <= 0)
-              {
-                   gpio_direction_output(_3_GPIO_TOUCH_EN, 0);
-	            gpio_direction_output(_3_GPIO_TOUCH_CE, 0);
-                   msleep(300);
-              }
+	      {
+		  touchkey_power_off();
+		  msleep(300);
+	      }
               init_hw(); //after update, re initalize.
 	}
        #endif
