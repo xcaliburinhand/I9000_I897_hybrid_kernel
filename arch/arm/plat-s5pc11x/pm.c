@@ -1322,6 +1322,20 @@ static int s5pc11x_pm_enter(suspend_state_t state)
 
 	s5pc11x_pm_set_eint(28, 0x4);	// T_FLASH_DETECT
 
+                if(HWREV!=0x08)
+                {
+                        if(get_headset_status() & SEC_HEADSET_4_POLE_DEVICE)
+                        {
+                                s5pc11x_pm_set_eint(30, 0x4); //sendend
+                                s5pc11x_pm_set_eint(18, 0x4); //sendend 2.5
+                        }
+                        else
+                        {
+                        s5pc11x_pm_clear_eint(30);
+                                s5pc11x_pm_clear_eint(18);
+                        }
+                }
+
 	if(gp2a_get_proximity_enable())
 	{
 	    s5pc11x_pm_set_eint(2, 0x4);//proximity

@@ -107,39 +107,15 @@ enum SENDENDSTATE SendEnd_state=SENDENDOFF;
 void select_gpio_earmic_bias(void) 
 {
 
-#if defined(CONFIG_S5PC110_KEPLER_BOARD)//Kepler
  	printk("Kepler ver:0x%x\n",HWREV);
 	if((HWREV == 0x04) || (HWREV == 0x08) || (HWREV == 0x0C) || (HWREV == 0x02) || (HWREV == 0x0A)) //0x08:00, 0x04:01, 0x0C:02, 0x02:03, 0x0A:04
 		gpio_ear_mic_bias_en=GPIO_MICBIAS_EN;
 	else // from 05 board (0x06: 05, 0x0E: 06)
 		gpio_ear_mic_bias_en=GPIO_EARMICBIAS_EN;	
-	
-#elif (defined CONFIG_S5PC110_T959_BOARD)//T959
- 	printk("T959 ver:0x%x\n",HWREV);
-	if((HWREV == 0x0A) || (HWREV == 0x0C) || (HWREV == 0x0D) || (HWREV == 0x0E) ) //0x0A:00, 0x0C:00, 0x0D:01, 0x0E:05
-		gpio_ear_mic_bias_en=GPIO_MICBIAS_EN;	
-	else// from 06 board(0x0F: 06)
-		gpio_ear_mic_bias_en=GPIO_MICBIAS_EN2;		
- #endif
 
 //slect 4 pold adc range value
-#if defined(CONFIG_S5PC110_KEPLER_BOARD)//Kepler
 	adc_min=700;
 	adc_max=2500;
-#elif (defined CONFIG_S5PC110_T959_BOARD)//T959
-	if(HWREV==0x0a || HWREV==0x0c) 
-	{
-		
-		adc_min=1500;
-		adc_max=5000;		
-	}
-	else
-	{
-		adc_min=500;
-		adc_max=3300;	
-	}
- #endif
- 
 }
 
 void select_enable_irq(void)
@@ -147,23 +123,11 @@ void select_enable_irq(void)
 	struct sec_gpio_info   *send_end = &hi->port.send_end;
 	struct sec_gpio_info   *send_end35 = &hi->port.send_end35;
 	
-#if defined(CONFIG_S5PC110_KEPLER_BOARD)//Kepler
 	if(HWREV!=0x08)
 	{
 		enable_irq (send_end->eint);
 		enable_irq (send_end35->eint);
 	}
-#elif (defined CONFIG_S5PC110_T959_BOARD)//T959
-	if(HWREV==0x0a ||HWREV==0x0c)
-	{				
-		enable_irq (send_end->eint);
-	}
-	else
-	{
-		enable_irq (send_end->eint);
-		enable_irq (send_end35->eint);
-	}
-#endif
 }
 
 void select_disable_irq(void)
@@ -171,23 +135,11 @@ void select_disable_irq(void)
 	struct sec_gpio_info   *send_end = &hi->port.send_end;
 	struct sec_gpio_info   *send_end35 = &hi->port.send_end35;
 	
-#if defined(CONFIG_S5PC110_KEPLER_BOARD) //Kepler
 	if(HWREV!=0x08)
 	{
 		disable_irq (send_end->eint); 
 		disable_irq (send_end35->eint);
 	}
-#elif (defined CONFIG_S5PC110_T959_BOARD)//T959
-	if(HWREV==0x0a ||HWREV==0x0c)
-	{
-		disable_irq (send_end->eint);
-	}
-	else
-	{
-		disable_irq (send_end->eint);
-		disable_irq (send_end35->eint);
-	}
-#endif
 			
 }
 
@@ -198,28 +150,10 @@ int get_gpio_send_end_state(void)
 	int state,state_25,state_35;
 
 
-#if defined(CONFIG_S5PC110_KEPLER_BOARD) //Kepler
-
 	state_25=gpio_get_value(send_end->gpio) ^ send_end->low_active;
 	state_35=gpio_get_value(send_end35->gpio) ^ send_end35->low_active;
 	state=(state_25|state_35);
-
-#elif (defined CONFIG_S5PC110_T959_BOARD) //T959
-	if(HWREV==0x0a ||HWREV==0x0c)
-	{
-
-		state = gpio_get_value(send_end->gpio) ^ send_end->low_active;
-	}
-	else
-	{
-		
-		state_25=gpio_get_value(send_end->gpio) ^ send_end->low_active;
-		state_35=gpio_get_value(send_end35->gpio) ^ send_end35->low_active;
-		state=(state_25|state_35); 
-		
-	}
-#endif	
-
+	
 	return state;
 }
 
@@ -792,7 +726,6 @@ static int sec_jack_probe(struct platform_device *pdev)
 	SendEnd_state=SENDENDOFF;//hdlnc_ysyim_2010-05-11
 
 
-#if defined(CONFIG_S5PC110_KEPLER_BOARD) //Kepler
 	if(HWREV!=0x08)
 	{
 		//GPIO configuration
@@ -831,66 +764,6 @@ static int sec_jack_probe(struct platform_device *pdev)
 		
 		send_end_irq_token=0;
 	}
-#elif (defined CONFIG_S5PC110_T959_BOARD) //T959
-	if(HWREV==0x0a ||HWREV==0x0c)
-	{
-		//GPIO configuration
-		send_end = &hi->port.send_end;
-		s3c_gpio_cfgpin(send_end->gpio, S3C_GPIO_SFN(send_end->gpio_af));
-		s3c_gpio_setpull(send_end->gpio, S3C_GPIO_PULL_NONE);
-		set_irq_type(send_end->eint, IRQ_TYPE_EDGE_BOTH);
-
-		ret = request_irq(send_end->eint, send_end_irq_handler, IRQF_DISABLED, "sec_headset_send_end", NULL);
-
-		SEC_JACKDEV_DBG("sended isr send=0X%x, ret =%d", send_end->eint, ret);
-		if (ret < 0)
-		{
-			printk(KERN_ERR "SEC HEADSET: Failed to register send/end interrupt.\n");
-			goto err_request_send_end_irq;
-		}
-
-		disable_irq(send_end->eint);
-		send_end_irq_token=0;
-	}
-	else
-	{
-		//GPIO configuration
-		send_end = &hi->port.send_end;
-		s3c_gpio_cfgpin(send_end->gpio, S3C_GPIO_SFN(send_end->gpio_af));
-		s3c_gpio_setpull(send_end->gpio, S3C_GPIO_PULL_NONE);
-		set_irq_type(send_end->eint, IRQ_TYPE_EDGE_BOTH);
-
-		ret = request_irq(send_end->eint, send_end_irq_handler, IRQF_DISABLED, "sec_headset_send_end", NULL);
-
-		SEC_JACKDEV_DBG("sended isr send=0X%x, ret =%d", send_end->eint, ret);
-		if (ret < 0)
-		{
-			printk(KERN_ERR "SEC HEADSET: Failed to register send/end interrupt.\n");
-			goto err_request_send_end_irq;
-		}
-
-		disable_irq(send_end->eint);
-
-
-		send_end35 = &hi->port.send_end35;
-		s3c_gpio_cfgpin(send_end35->gpio, S3C_GPIO_SFN(send_end35->gpio_af));
-		s3c_gpio_setpull(send_end35->gpio, S3C_GPIO_PULL_NONE);
-		set_irq_type(send_end35->eint, IRQ_TYPE_EDGE_BOTH);
-
-		ret = request_irq(send_end35->eint, send_end_irq_handler, IRQF_DISABLED, "sec_headset_send_end", NULL);
-
-		SEC_JACKDEV_DBG("sended35 isr send=0X%x, ret =%d", send_end35->eint, ret);
-		if (ret < 0)
-		{
-			printk(KERN_ERR "SEC HEADSET35 : Failed to register send/end interrupt.\n");
-			goto err_request_send_end_irq;
-		}
-
-		disable_irq(send_end35->eint);
-		
-		send_end_irq_token=0;
-	}
-#endif
 	
 	det_jack = &hi->port.det_jack;
 	s3c_gpio_cfgpin(det_jack->gpio, S3C_GPIO_SFN(det_jack->gpio_af));
@@ -969,23 +842,11 @@ static int sec_jack_remove(struct platform_device *pdev)
 	SEC_JACKDEV_DBG("");
 	input_unregister_device(hi->input);
 	free_irq(hi->port.det_jack.eint, 0);
-	#if defined(CONFIG_S5PC110_KEPLER_BOARD) //Kepler
 	if(HWREV!=0x08)
 	{
 		free_irq(hi->port.send_end.eint, 0);  // hdlnc_bp_kwon : 20100301
 		free_irq(hi->port.send_end35.eint, 0);
 	}
-	#elif (defined CONFIG_S5PC110_T959_BOARD) //T959
-	if(HWREV==0x0a ||HWREV==0x0c)
-	{
-		free_irq(hi->port.send_end.eint, 0);
-	}
-	else
-	{
-		free_irq(hi->port.send_end.eint, 0);
-		free_irq(hi->port.send_end35.eint, 0);
-	}
-	#endif
 	switch_dev_unregister(&switch_jack_detection);
 	switch_dev_unregister(&switch_sendend);
 	return 0;

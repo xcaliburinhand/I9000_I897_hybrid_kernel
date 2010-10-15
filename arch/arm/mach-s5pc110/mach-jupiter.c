@@ -930,7 +930,8 @@ static struct sec_jack_port sec_jack_port[] = {
 			#ifdef CONFIG_KEPLER_AUDIO_A1026
 			.low_active	= 0 // hdlnc_bp_ytkwon : 20100301
 			#else
-			.low_active	= 1 // hdlnc_bp_ytkwon : 20100301
+//			.low_active	= 1 // hdlnc_bp_ytkwon : 20100301
+			.low_active     = 0
 			#endif
 //[ hdlnc_bp_ytkwon : 20100310
 		},			
@@ -3972,7 +3973,8 @@ static unsigned int jupiter_sleep_gpio_table[][3] = {
 
 #else
         {S5PC11X_MP04(4), 
-			  S3C_GPIO_SLP_INPUT, S3C_GPIO_PULL_DOWN}, 
+//			  S3C_GPIO_SLP_INPUT, S3C_GPIO_PULL_DOWN}, 
+                          S3C_GPIO_SLP_INPUT, S3C_GPIO_PULL_NONE},
 #endif	
 		  
 #if defined CONFIG_ARIES_VER_B0 || defined CONFIG_ARIES_VER_B1|| defined CONFIG_ARIES_VER_B2 || (defined CONFIG_ARIES_VER_B3)				  
@@ -4159,6 +4161,7 @@ void s3c_config_sleep_gpio(void)
 	//s3c_gpio_setpin(S5PC11X_GPH1(2), 0);	
 */	
 #else
+/*
 	s3c_gpio_cfgpin(S5PC11X_GPH1(0), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PC11X_GPH1(0), S3C_GPIO_PULL_DOWN);
 	//s3c_gpio_setpin(S5PC11X_GPH1(1), 0);
@@ -4171,6 +4174,7 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_cfgpin(S5PC11X_GPH1(2), S3C_GPIO_INPUT);
 	s3c_gpio_setpull(S5PC11X_GPH1(2), S3C_GPIO_PULL_DOWN);
 	//s3c_gpio_setpin(S5PC11X_GPH1(2), 0);
+*/
 #endif	//CONFIG_KEPLER_AUDIO_A1026	
 
 #if 0	// kt.hur on 100104
